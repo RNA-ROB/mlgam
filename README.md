@@ -6,7 +6,7 @@ This is a pipeline designed to perform transcript isoform discovery and quantifi
 
 ### Dependencies:
 
-* [GffCompare](https://github.com/gpertea/gffcompare) (v0.12.6 or above)
+* [GffCompare](https://github.com/gpertea/gffcompare) (v0.12.6)
 * [HTSlib](https://www.htslib.org/) (v1.18 or above)
   * Only need to install `bgzip` and `tabix` (make these available in `$PATH`)
 * [Python](https://www.python.org/downloads) (v3.8.18 or above)
