@@ -69,6 +69,13 @@ sort -k1,1V -k4,4g -k5,5g [/path/to/output.transcripts.updated.gtf] | bgzip > [/
 tabix -p gff [/path/to/output.transcripts.updated.gtf.gz]
 ```
 
+**Note:** If you want to skip this step and go straight to transcript quantification, you can compress/index the GTF file produced by `Build_Transcriptome.py` as follows:
+
+```
+sort -k1,1V -k4,4g -k5,5g [/path/to/output.transcripts.gtf] | bgzip > [/path/to/output.transcripts.updated.gtf.gz]
+tabix -p gff [/path/to/output.transcripts.updated.gtf.gz]
+```
+
 **Step 5:** Use `Quantify_Transcripts.py` to quantify transcripts from `/path/to/output.transcripts.updated.gtf.gz` in an individual long-read RNA-seq BAM file. This script can also be found in the `scripts` folder.
 
 ```
