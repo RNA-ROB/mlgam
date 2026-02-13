@@ -1,0 +1,12 @@
+biopython=1.78
+cvxpy=1.5.3
+gffcompare=0.12.6
+htslib=1.21
+networkx=2.6.3
+numpy=1.24.4
+pandas=2.0.3
+pysam=0.23.3
+pytabix=0.1
+python=3.11.*
+samtools=1.21
+stringtie=3.0.0
