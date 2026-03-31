@@ -169,7 +169,8 @@ def getAnnoStartCodon(annoDF):
 
     # Identify the genomic start coordinate of each start codon with respect to transcript strand
     annoStartCodon['startCoord'] = annoStartCodon.apply(lambda x: x['startCodonStart'] if x['strand'] == '+' else x['startCodonEnd'], axis = 1)
-    
+    annoStartCodon = annoStartCodon.groupby(['geneID', 'chrom', 'startCoord'])['basic'].agg(any).reset_index()
+   
     return dict(zip(annoStartCodon['chrom'] + '_' + annoStartCodon['startCoord'].astype(str), zip(annoStartCodon['geneID'], annoStartCodon['basic'])))
 
 def getCanonProteinSeq(annoDF, genome):
