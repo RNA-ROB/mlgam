@@ -169,9 +169,9 @@ def getAnnoStartCodon(annoDF):
 
     # Identify the genomic start coordinate of each start codon with respect to transcript strand
     annoStartCodon['startCoord'] = annoStartCodon.apply(lambda x: x['startCodonStart'] if x['strand'] == '+' else x['startCodonEnd'], axis = 1)
-    annoStartCodon = annoStartCodon.groupby(['chrom', 'startCoord'])[['geneID', 'basic']].agg(geneID = ('geneID', set), basic = ('basic', any)).reset_index()
+    annoStartCodon = annoStartCodon.groupby(['geneID', 'chrom', 'startCoord'])['basic'].agg(any).reset_index()
    
-    return dict(zip(annoStartCodon['chrom'] + '_' + annoStartCodon['startCoord'].astype(str), zip(annoStartCodon['geneID'], annoStartCodon['basic'])))
+    return dict(zip(annoStartCodon['geneID'] + '_' + annoStartCodon['chrom'] + '_' + annoStartCodon['startCoord'].astype(str), annoStartCodon['basic']))
 
 def getCanonProteinSeq(annoDF, genome):
     '''
@@ -212,9 +212,8 @@ def getLongestORF(transcript, annoStartCodon, canonProteinSeq, genome):
         myIdx = [(i, l) for i, l in enumerate(frameSeq) if l in {'M', '*'}]
 
         # Flag which M's in myIdx are annotated or not
-        myIdx = [(tup[0], tup[1], transcript['chrom'] + '_' + str(tx2GenomeCoord(tup[0]*3 + shift, transcript['exonCoord'], transcript['strand'])) 
-            in annoStartCodon and transcript['geneID'] in annoStartCodon.get(transcript['chrom'] + '_' + str(tx2GenomeCoord(tup[0]*3 + shift, 
-            transcript['exonCoord'], transcript['strand'])), '.')[0]) if tup[1] == 'M' else (tup[0], tup[1], False) for tup in myIdx]
+        myIdx = [(tup[0], tup[1], transcript['geneID'] + '_' + transcript['chrom'] + '_' + str(tx2GenomeCoord(tup[0]*3 + shift, transcript['exonCoord'], transcript['strand'])) 
+            in annoStartCodon) if tup[1] == 'M' else (tup[0], tup[1], False) for tup in myIdx]
         myIdxAnno = [tup for tup in myIdx if (tup[2] == True) or (tup[1] == '*')]
         myIdxOther = [tup for tup in myIdx if tup[2] == False]
 
@@ -279,7 +278,7 @@ def getLongestORF(transcript, annoStartCodon, canonProteinSeq, genome):
         if any(currDF[3]):
             # Add sixth column indicating whether the start codon is derived from a basic transcript
             currDF = currDF[currDF[3]].copy()
-            currDF[6] = [annoStartCodon[item][1] for item in transcript['chrom'] + '_' + currDF[0].astype(str)]
+            currDF[6] = [annoStartCodon[item] for item in transcript['geneID'] + '_' + transcript['chrom'] + '_' + currDF[0].astype(str)]
             return tuple(currDF.sort_values(by = [6, 2], ascending = False).iloc[0, 0:2])
         else:
             if any(currDF[5]):
