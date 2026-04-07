@@ -1,0 +1,44 @@
+# Output directory names
+annotation_dir: results/annotation
+ckpt_dir: results/checkpoints
+log_dir: results/logs
+sample_dir: results/samples
+
+# Annotation resources
+genome_path: /scr1/users/spruancej/references/genomes/human/GRCh38.primary_assembly.genome.fa
+gencode_annotation_path: /scr1/users/spruancej/datasets/snakemake_test/gencode.v49.chr21.chr22.primary_assembly.annotation.gtf
+
+# Asset paths
+refTSS: '../assets/human.refTSS_v4.1.hg38.bed.gz'
+polyA: '../assets/atlas.clusters.2.0.GRCh38.bed.gz'
+
+# StringTie parameters
+stringtie_threads: 8
+stringtie_mem_gb: 8
+stringtie_time_hr: 4
+
+# GFFCompare parameters
+gffcompare_prefix: gffcmp
+gffcompare_mem_gb: 8
+gffcompare_time_hr: 4
+
+# Build_Transcriptome parameters
+build_transcriptome_mem_gb: 8
+build_transcriptome_time_hr: 4
+
+# Annotate_ORFs parameters
+annotate_orfs_mem_gb: 16
+annotate_orfs_time_hr: 8
+
+# Quantify_Transcripts parameters
+quantify_transcripts_mem_gb: 16
+quantify_transcripts_time_hr: 8
+
+# Samples
+samples:
+  NCD8:
+    - bam: /scr1/users/spruancej/datasets/snakemake_test/NCD8.chr21.chr22.sorted.bam
+  mDC:
+    - bam: /scr1/users/spruancej/datasets/snakemake_test/mDC.chr21.chr22.sorted.bam
+
+conda_wrapper: '/scr1/users/spruancej/tools/long-read-rna-seq-pipeline/snakemake/conda_wrapper'

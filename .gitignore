@@ -1,0 +1,7 @@
+snakemake/conda_env/
+snakemake/.snakemake/
+snakemake/results/
+snakemake/logs/
+snakemake/snakemake_profile/__pycache__/
+snakemake/snakemake_profile/job_resource_usage/
+snakemake/dag.svg

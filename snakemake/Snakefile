@@ -1,0 +1,226 @@
+configfile: 'snakemake_config.yaml'
+
+# Specify some global variables for directory paths
+ANN_DIR = config['annotation_dir']
+CKPT_DIR = config['ckpt_dir']
+LOG_DIR = config['log_dir']
+SAMPLE_DIR = config['sample_dir']
+
+# Specify default resources
+DEFAULT_MEM_MB = 4 * 1024  # 4 GB in MB
+DEFAULT_TIME_HR = 8  # 8 hours
+
+onsuccess:
+    print('workflow success')
+onerror:
+    print('workflow error')
+
+def get_input_bams(wildcards):
+    return config['samples'][wildcards.sample][0]['bam']
+
+def get_updated_chromosome_gtfs(wildcards):
+    ckpt = checkpoints.get_chromosomes.get()
+    ckpt_output = ckpt.output[0]
+    with open(ckpt_output) as f:
+        chroms = [line.strip() for line in f]
+    return expand(f"{ANN_DIR}/updated_tmp/{{chromosome}}.updated.gtf", chromosome=chroms)
+
+rule all:
+    input:
+        f"{ANN_DIR}/output.transcripts.updated.gtf.gz",
+        expand(f"{SAMPLE_DIR}/{{sample}}/transcript_counts.tsv", sample=config['samples'].keys())
+
+rule stringtie:
+    input:
+        bams = get_input_bams
+    output:
+        gtf = f'{SAMPLE_DIR}/{{sample}}/output.gtf'
+    log:
+        out=f'{LOG_DIR}/stringtie/{{sample}}/log.out',
+        err=f'{LOG_DIR}/stringtie/{{sample}}/log.err'
+    params:
+        conda_wrapper = config['conda_wrapper'],
+        
+    threads: config['stringtie_threads']
+    resources:
+        mem_mb = config['stringtie_mem_gb'] * 1024,
+        time_hours = config['stringtie_time_hr']
+    shell:
+        '''{params.conda_wrapper} stringtie \
+            -p {threads} \
+            -o {output.gtf} \
+            {input.bams} \
+            1> {log.out} \
+            2> {log.err}
+        '''
+
+rule build_gffcompare_input:
+    input:
+        sample_gtfs = expand(f'{SAMPLE_DIR}/{{sample}}/output.gtf', sample=config['samples'].keys()),
+        gencode_annotation = config['gencode_annotation_path']
+    output:
+        temp(f'{ANN_DIR}/gffcompare/gffcompare_input.txt')
+    resources:
+        mem_mb = DEFAULT_MEM_MB,
+        time_hours = DEFAULT_TIME_HR
+    shell:
+        '''echo -e "{input.gencode_annotation}\\n{input.sample_gtfs}" | tr ' ' '\\n' > {output}'''
+
+rule gffcompare:
+    input:
+        gffcompare_input = f'{ANN_DIR}/gffcompare/gffcompare_input.txt',
+    output:
+        gffcompare_gtf = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.combined.gtf', prefix=config['gffcompare_prefix']),
+        gffcmp_loci = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.loci', prefix=config['gffcompare_prefix']),
+        gffcmp_stats = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.stats', prefix=config['gffcompare_prefix']),
+        gffcmp_tracking = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.tracking', prefix=config['gffcompare_prefix'])
+    log:
+        out=f'{LOG_DIR}/gffcompare/log.out',
+        err=f'{LOG_DIR}/gffcompare/log.err'
+    params:
+        gffcompare_prefix = config['gffcompare_prefix'],
+        conda_wrapper = config['conda_wrapper']
+    resources:
+        mem_mb = config['gffcompare_mem_gb'] * 1024,
+        time_hours = DEFAULT_TIME_HR
+    shell:
+        '''{params.conda_wrapper} gffcompare \
+            -i {input.gffcompare_input} \
+            -T \
+            -o {ANN_DIR}/gffcompare/{params.gffcompare_prefix} \
+            1> {log.out} \
+            2> {log.err}
+        '''
+
+rule build_transcriptome:
+    input:
+        gencode_annotation = config['gencode_annotation_path'],
+        genome_fasta = config['genome_path'],
+        refTSS = config['refTSS'],
+        polyA = config['polyA'],
+        gffcompare_gtf = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.combined.gtf', prefix=config['gffcompare_prefix']),
+        gffcmp_loci = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.loci', prefix=config['gffcompare_prefix']),
+        gffcmp_stats = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.stats', prefix=config['gffcompare_prefix']),
+        gffcmp_tracking = expand(f'{ANN_DIR}/gffcompare/{{prefix}}.tracking', prefix=config['gffcompare_prefix'])
+    output:
+        output_gtf = f'{ANN_DIR}/output.transcripts.gtf'
+    log:
+        out=f'{LOG_DIR}/build_transcriptome/log.out',
+        err=f'{LOG_DIR}/build_transcriptome/log.err'
+    params:
+        gffcmp_prefix = expand(f'{ANN_DIR}/gffcompare/{{prefix}}', prefix=config['gffcompare_prefix']),
+        conda_wrapper = config['conda_wrapper']
+    resources:
+        mem_mb = config['build_transcriptome_mem_gb'] * 1024,
+        time_hours = config['build_transcriptome_time_hr']
+    shell:
+        '''{params.conda_wrapper} python ../scripts/Build_Transcriptome.py \
+            -i {params.gffcmp_prefix} \
+            -g {input.gencode_annotation} \
+            -f {input.genome_fasta} \
+            -x {input.refTSS} \
+            -y {input.polyA} \
+            -o {output.output_gtf} \
+            1> {log.out} \
+            2> {log.err}
+        '''
+
+checkpoint get_chromosomes:
+    input:
+        gtf = f'{ANN_DIR}/output.transcripts.gtf'
+    output:
+        f'{CKPT_DIR}/chromosomes.txt'
+    resources:
+        mem_mb = DEFAULT_MEM_MB,
+        time_hours = DEFAULT_TIME_HR
+    shell:
+        '''awk '{{print $1}}' {input.gtf} | sort | uniq > {output}'''
+
+rule split_gtf_by_chr:
+    input:
+        gtf = f'{ANN_DIR}/output.transcripts.gtf',
+        chromosomes = f'{CKPT_DIR}/chromosomes.txt'
+    output:
+        temp(f'{ANN_DIR}/tmp/{{chromosome}}.gtf')
+    resources:
+        mem_mb = DEFAULT_MEM_MB,
+        time_hours = DEFAULT_TIME_HR
+    shell:
+        '''awk '$1=="{wildcards.chromosome}"' {input.gtf} > {output}'''
+
+rule annotate_orfs_by_chr:
+    input:
+        chr_gtf = f'{ANN_DIR}/tmp/{{chromosome}}.gtf',
+        gencode_annotation = config['gencode_annotation_path'],
+        genome_fasta = config['genome_path']
+    output:
+        temp(f'{ANN_DIR}/updated_tmp/{{chromosome}}.updated.gtf')
+    log:
+        out=f'{LOG_DIR}/annotate_orfs/{{chromosome}}/log.out',
+        err=f'{LOG_DIR}/annotate_orfs/{{chromosome}}/log.err'
+    params:
+        conda_wrapper = config['conda_wrapper']
+    resources:
+        mem_mb = DEFAULT_MEM_MB,
+        time_hours = DEFAULT_TIME_HR
+    shell:
+        '''{params.conda_wrapper} python ../scripts/Annotate_ORF.py \
+            -i {input.chr_gtf} \
+            -a {input.gencode_annotation} \
+            -f {input.genome_fasta} \
+            -o {output} \
+            1> {log.out} \
+            2> {log.err}
+        '''
+
+rule sort_and_merge_annotated_gtfs:
+    input:
+        annotated_gtfs = get_updated_chromosome_gtfs
+    output:
+        f'{ANN_DIR}/output.transcripts.updated.gtf.gz'
+    params:
+        conda_wrapper = config['conda_wrapper']
+    resources:
+        mem_mb = DEFAULT_MEM_MB,
+        time_hours = DEFAULT_TIME_HR
+    shell:
+        '''{params.conda_wrapper} cat {input.annotated_gtfs} | \
+           sort -k1,1V -k4,4g -k5,5g | \
+           bgzip > {output}'''
+
+rule index_merged_gtf:
+    input:
+        merged_gtf = f'{ANN_DIR}/output.transcripts.updated.gtf.gz'
+    output:
+        f'{ANN_DIR}/output.transcripts.updated.gtf.gz.tbi'
+    params:
+        conda_wrapper = config['conda_wrapper']
+    resources:
+        mem_mb = DEFAULT_MEM_MB,
+        time_hours = DEFAULT_TIME_HR
+    shell:
+        '''{params.conda_wrapper} tabix -p gff {input.merged_gtf}'''
+
+rule quantify_transcripts:
+    input:
+        bams = get_input_bams,
+        merged_gtf = f'{ANN_DIR}/output.transcripts.updated.gtf.gz',
+        merged_gtf_index = f'{ANN_DIR}/output.transcripts.updated.gtf.gz.tbi'
+    output:
+        f'{SAMPLE_DIR}/{{sample}}/transcript_counts.tsv'
+    log:
+        out=f'{LOG_DIR}/quantify_transcripts/{{sample}}/log.out',
+        err=f'{LOG_DIR}/quantify_transcripts/{{sample}}/log.err'
+    params:
+        conda_wrapper = config['conda_wrapper']
+    resources:
+        mem_mb = config['quantify_transcripts_mem_gb'] * 1024,
+        time_hours = config['quantify_transcripts_time_hr']
+    shell:
+        '''{params.conda_wrapper} python ../scripts/Quantify_Transcripts.py \
+            -i {input.bams} \
+            -g {input.merged_gtf} \
+            -o {output} \
+            1> {log.out} \
+            2> {log.err}
+        '''
