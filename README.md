@@ -1,8 +1,8 @@
-## Long-Read RNA-Seq Data Processing Pipeline (v1.0.0-beta)
+## MLGAM (v1.0.0)
 
-This is a pipeline designed to perform transcript isoform discovery and quantification from long-read RNA-seq data generated on **human** samples, regardless of how fragmented the data may be.
+MLGAM (Mending Long-read Gene Annotations Method) is a pipeline designed to perform transcript isoform discovery and quantification from long-read RNA-seq data generated on **human** samples, regardless of how fragmented the data may be.
 
-**Note:** This pipeline is still under active development. Please reach out to Robert Wang (wangr5@email.chop.edu) if you have any feedback or run into any issues!
+**Note:** MLGAM is still under active development. Please reach out to Robert Wang (wangr5@email.chop.edu) if you have any feedback or run into any issues!
 
 ### Dependencies:
 
@@ -29,7 +29,7 @@ conda install -c conda-forge -c bioconda --file ./conda_requirements.txt
 
 ### Usage:
 
-This pipeline assumes that you have already aligned long-read RNA-seq reads to the GRCh38/hg38 human reference genome (indexed BAM file) using your favorite aligner of choice. This pipeline also extensively works with gene annotations from [GENCODE](https://www.gencodegenes.org/).
+MLGAM assumes that you have already aligned long-read RNA-seq reads to the GRCh38/hg38 human reference genome (indexed BAM file) using your favorite aligner of choice. MLGAM also extensively works with gene annotations from [GENCODE](https://www.gencodegenes.org/).
 
 **Step 1:** Perform de-novo transcriptome assembly from long-read RNA-seq alignments using StringTie (short-read mode, default settings). If you have multiple samples, run StringTie individually on each sample.
 
