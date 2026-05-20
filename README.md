@@ -1,6 +1,6 @@
 ## AMALGAM (v1.0.0)
 
-AMALGAM (Assembly and Merging Algorithm for Long-read Gene Annotation Models) is a pipeline designed to perform transcript isoform discovery and quantification from long-read RNA-seq data generated on **human** samples, regardless of how fragmented the data may be.
+AMALGAM (Assembly and Merging Algorithm for Long-read Gene Annotation Modeling) is a pipeline designed to perform transcript isoform discovery and quantification from long-read RNA-seq data generated on **human** samples, regardless of how fragmented the data may be.
 
 **Note:** AMALGAM is still under active development. Please reach out to Robert Wang (wangr5@email.chop.edu) if you have any feedback or run into any issues!
 
